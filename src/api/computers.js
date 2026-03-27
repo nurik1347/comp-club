@@ -48,5 +48,6 @@ export default {
   createComputer,
   updateComputer,
   deleteComputer,
-  updateComputerStatus
+  updateComputerStatus,
+  getAllComputers
 }

@@ -54,7 +54,6 @@
     <article class="data-panel">
       <div class="panel-head">
         <h3>Zonalar jadvali</h3>
-        <p>Qatorga bossangiz, update form avtomatik to`ladi.</p>
       </div>
 
       <div class="table-wrap" v-if="zones.length">
