@@ -3,16 +3,16 @@
     <article class="hero-panel">
       <div class="hero-head">
         <div>
-          <p class="kicker">Session Control Center</p>
-          <h2>Sessiyalar boshqaruvi</h2>
+          <p class="kicker">Session Monitor</p>
+          <h2>Sessiyalar monitoringi</h2>
           <p class="subtitle">
-            API mantiqiga mos amallar: get all, active, by-id, start, end va real-time cost.
+            Faol va tugallangan sessiyalarni kuzatish va boshqarish
           </p>
         </div>
 
         <div class="hero-actions">
           <button type="button" class="btn primary" :disabled="loading" @click="runGetAll">
-            {{ loading ? 'Yuklanmoqda...' : 'Barchasini yangilash' }}
+            {{ loading ? 'Yuklanmoqda...' : 'Yangilash' }}
           </button>
           <button type="button" class="btn" :disabled="loading" @click="runGetActive">Faqat active</button>
           <button type="button" class="btn" @click="clearSelection">Tanlovni tozalash</button>
@@ -70,11 +70,11 @@
     <article class="data-panel">
       <div class="panel-head">
         <h3>Sessiyalar jadvali</h3>
-        <p>Qatorga bossangiz action form ID maydonlari avtomatik to'ladi.</p>
+        <p>Sessiyani o'chirish yoki tugatish uchun amallarni bosing</p>
       </div>
 
       <div class="table-wrap" v-if="sessions.length">
-        <table>
+        <table class="data-table">
           <thead>
             <tr>
               <th>ID</th>
@@ -86,6 +86,7 @@
               <th>Tugagan</th>
               <th>Davomiylik</th>
               <th>Narx</th>
+              <th>Amallar</th>
             </tr>
           </thead>
           <tbody>
@@ -108,6 +109,23 @@
               <td>{{ formatDateTime(session.endedAt) }}</td>
               <td>{{ sessionDurationText(session) }}</td>
               <td>{{ sessionCostText(session) }}</td>
+              <td class="actions-col">
+                <button 
+                  v-if="session.status === 'active'"
+                  class="btn small warning" 
+                  @click.stop="endSession(session.id)"
+                  :disabled="loading"
+                >
+                  ⏹️ Tugatish
+                </button>
+                <button 
+                  class="btn small danger" 
+                  @click.stop="deleteSession(session.id)"
+                  :disabled="loading"
+                >
+                  🗑️ O'chirish
+                </button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -116,169 +134,125 @@
       <div v-else class="empty-box">Hali sessiyalar ma'lumoti yuklanmagan.</div>
     </article>
 
-    <div class="forms-grid">
-      <article class="form-card">
-        <h3>Start Session</h3>
-        <form class="form-grid" @submit.prevent="runStart">
-          <label>
-            <span>User ID</span>
-            <input v-model.number="startForm.userId" type="number" min="1" placeholder="1" />
-          </label>
-
-          <label>
-            <span>Computer ID</span>
-            <input v-model.number="startForm.computerId" type="number" min="1" placeholder="1" />
-          </label>
-
-          <label>
-            <span>Tariff ID</span>
-            <input v-model.number="startForm.tariffId" type="number" min="1" placeholder="1" />
-          </label>
-
-          <label>
-            <span>Izoh (ixtiyoriy)</span>
-            <input v-model.trim="startForm.notes" type="text" placeholder="Ixtiyoriy izoh" />
-          </label>
-
-          <button type="submit" class="btn primary">Sessiyani boshlash</button>
-        </form>
-      </article>
-
-      <article class="form-card">
-        <h3>Session Actions</h3>
-        <div class="inline-row">
-          <input v-model.number="idForm.sessionId" type="number" min="1" placeholder="Session ID" />
-          <button type="button" class="btn" @click="runGetById">By ID</button>
-        </div>
-
-        <div class="inline-row">
-          <input v-model.number="costForm.sessionId" type="number" min="1" placeholder="Session ID" />
-          <button type="button" class="btn" @click="runGetCost">Current Cost</button>
-        </div>
-
-        <div class="inline-row">
-          <input v-model.number="endForm.sessionId" type="number" min="1" placeholder="Session ID" />
-          <button type="button" class="btn danger" @click="runEnd">End Session</button>
-        </div>
-
-        <div class="selected-box" v-if="selectedSession">
-          <p>Tanlangan sessiya</p>
-          <strong>ID: {{ selectedSession.id ?? '-' }} | {{ statusText(selectedSession.status) }}</strong>
-          <span>{{ selectedSession.userName || selectedSession.userId || '-' }} -> {{ selectedSession.computerName || selectedSession.computerId || '-' }}</span>
-        </div>
-      </article>
-    </div>
-
     <article class="data-panel" v-if="selectedSession">
       <div class="panel-head">
-        <h3>Tanlangan sessiya detail</h3>
+        <h3>Tanlangan sessiya detali</h3>
+        <div class="action-buttons">
+          <button 
+            v-if="selectedSession.status === 'active'"
+            class="btn warning" 
+            @click="endSession(selectedSession.id)"
+          >
+            ⏹️ Sessiyani tugatish
+          </button>
+          <button class="btn danger" @click="deleteSession(selectedSession.id)">🗑️ O'chirish</button>
+        </div>
       </div>
 
       <div class="detail-grid">
-        <article class="detail-item">
-          <span>ID</span>
-          <strong>{{ selectedSession.id ?? '-' }}</strong>
-        </article>
-        <article class="detail-item">
-          <span>Status</span>
-          <strong>{{ statusText(selectedSession.status) }}</strong>
-        </article>
-        <article class="detail-item">
-          <span>User</span>
-          <strong>{{ selectedSession.userName || selectedSession.userId || '-' }}</strong>
-        </article>
-        <article class="detail-item">
-          <span>Computer</span>
-          <strong>{{ selectedSession.computerName || selectedSession.computerId || '-' }}</strong>
-        </article>
-        <article class="detail-item">
-          <span>Tariff</span>
-          <strong>{{ selectedSession.tariffName || selectedSession.tariffId || '-' }}</strong>
-        </article>
-        <article class="detail-item">
-          <span>Boshlangan</span>
-          <strong>{{ formatDateTime(selectedSession.startedAt) }}</strong>
-        </article>
-        <article class="detail-item">
-          <span>Tugagan</span>
-          <strong>{{ formatDateTime(selectedSession.endedAt) }}</strong>
-        </article>
-        <article class="detail-item">
-          <span>Davomiylik</span>
-          <strong>{{ sessionDurationText(selectedSession) }}</strong>
-        </article>
-        <article class="detail-item">
-          <span>Narx</span>
-          <strong>{{ sessionCostText(selectedSession) }}</strong>
-        </article>
+        <article class="detail-item"><span>ID</span><strong>{{ selectedSession.id ?? '-' }}</strong></article>
+        <article class="detail-item"><span>Status</span><strong>{{ statusText(selectedSession.status) }}</strong></article>
+        <article class="detail-item"><span>User</span><strong>{{ selectedSession.userName || selectedSession.userId || '-' }}</strong></article>
+        <article class="detail-item"><span>Computer</span><strong>{{ selectedSession.computerName || selectedSession.computerId || '-' }}</strong></article>
+        <article class="detail-item"><span>Tariff</span><strong>{{ selectedSession.tariffName || selectedSession.tariffId || '-' }}</strong></article>
+        <article class="detail-item"><span>Boshlangan</span><strong>{{ formatDateTime(selectedSession.startedAt) }}</strong></article>
+        <article class="detail-item"><span>Tugagan</span><strong>{{ formatDateTime(selectedSession.endedAt) }}</strong></article>
+        <article class="detail-item"><span>Davomiylik</span><strong>{{ sessionDurationText(selectedSession) }}</strong></article>
+        <article class="detail-item"><span>Narx</span><strong>{{ sessionCostText(selectedSession) }}</strong></article>
       </div>
 
       <p class="detail-description" v-if="selectedSession.notes">{{ selectedSession.notes }}</p>
     </article>
 
-    <article class="data-panel">
-      <div class="panel-head">
-        <h3>API natijasi</h3>
-      </div>
+    <!-- Sessiyani tugatish modal -->
+    <Teleport to="body">
+      <div v-if="showEndModal" class="modal-overlay" @click.self="closeEndModal">
+        <div class="modal-container">
+          <div class="modal-header">
+            <h3>⏹️ Sessiyani tugatish</h3>
+            <button class="close-btn" @click="closeEndModal">✕</button>
+          </div>
+          
+          <div class="modal-body">
+            <div class="session-info">
+              <div class="info-row">
+                <span>Sessiya ID:</span>
+                <strong>{{ sessionToEnd?.id }}</strong>
+              </div>
+              <div class="info-row">
+                <span>Kompyuter:</span>
+                <strong>{{ sessionToEnd?.computerName || sessionToEnd?.computerId }}</strong>
+              </div>
+              <div class="info-row">
+                <span>Foydalanuvchi:</span>
+                <strong>{{ sessionToEnd?.userName || sessionToEnd?.userId }}</strong>
+              </div>
+              <div class="info-row">
+                <span>Boshlangan vaqt:</span>
+                <strong>{{ formatDateTime(sessionToEnd?.startedAt) }}</strong>
+              </div>
+              <div class="info-row">
+                <span>Hozirgi davomiylik:</span>
+                <strong>{{ sessionDurationText(sessionToEnd) }}</strong>
+              </div>
+              <div class="info-row highlight">
+                <span>💰 Hozirgi narx:</span>
+                <strong>{{ sessionCostText(sessionToEnd) }}</strong>
+              </div>
+            </div>
 
-      <div class="detail-grid" v-if="lastResult">
-        <article class="detail-item">
-          <span>So'nggi amal</span>
-          <strong>{{ lastAction || '-' }}</strong>
-        </article>
-        <article class="detail-item">
-          <span>Natija</span>
-          <strong>{{ lastResult.statusText }}</strong>
-        </article>
-        <article class="detail-item" v-if="lastResult.id !== null">
-          <span>Session ID</span>
-          <strong>{{ lastResult.id }}</strong>
-        </article>
-        <article class="detail-item" v-if="lastResult.status">
-          <span>Status</span>
-          <strong>{{ statusText(lastResult.status) }}</strong>
-        </article>
-        <article class="detail-item" v-if="lastResult.count !== null">
-          <span>Yozuvlar soni</span>
-          <strong>{{ lastResult.count }}</strong>
-        </article>
-        <article class="detail-item" v-if="lastResult.cost !== null">
-          <span>Narx</span>
-          <strong>{{ formatMoney(lastResult.cost) }}</strong>
-        </article>
+            <div class="form-group">
+              <label>📝 Izoh (ixtiyoriy)</label>
+              <textarea 
+                v-model="endNotes" 
+                placeholder="Sessiya tugatilish sababi..."
+                class="modal-textarea"
+                rows="3"
+              ></textarea>
+            </div>
+
+            <div class="warning-box">
+              <span>⚠️</span>
+              <p>Sessiya tugatilganda:</p>
+              <ul>
+                <li>Kompyuter avtomatik "bo'sh" holatga o'tadi</li>
+                <li>Umumiy narx hisoblanadi va balansdan yechiladi</li>
+                <li>Sessiya "completed" statusiga o'tadi</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn cancel" @click="closeEndModal">Bekor qilish</button>
+            <button type="button" class="btn warning" @click="confirmEndSession" :disabled="endLoading">
+              {{ endLoading ? 'Tugatilmoqda...' : 'Sessiyani tugatish' }}
+            </button>
+          </div>
+        </div>
       </div>
-      <p class="detail-description" v-if="lastResult && lastResult.note">{{ lastResult.note }}</p>
-      <div class="empty-box" v-if="!lastResult">Hali API amali bajarilmagan.</div>
-    </article>
+    </Teleport>
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import sessionsApi from '@/api/sessions'
 
 const sessions = ref([])
 const selectedSession = ref(null)
-const lastResponse = ref(null)
-const lastAction = ref('')
 const loading = ref(false)
 
+// End session modal
+const showEndModal = ref(false)
+const sessionToEnd = ref(null)
+const endNotes = ref('')
+const endLoading = ref(false)
+
 const filters = reactive({
-  status: 'active',
+  status: '',
   startDate: '',
   endDate: ''
-})
-
-const idForm = reactive({ sessionId: 1 })
-const costForm = reactive({ sessionId: 1 })
-const endForm = reactive({ sessionId: 1 })
-
-const startForm = reactive({
-  userId: 1,
-  computerId: 1,
-  tariffId: 1,
-  notes: ''
 })
 
 const moneyFormatter = new Intl.NumberFormat('uz-UZ')
@@ -287,33 +261,14 @@ const extractBody = (payload) => payload?.data ?? payload ?? null
 
 const toLooseNumber = (value) => {
   if (value === null || value === undefined) return null
-
   const direct = Number(value)
   if (Number.isFinite(direct)) return direct
-
-  if (typeof value === 'string') {
-    const match = value.match(/-?\d+(\.\d+)?/)
-    if (match) {
-      const parsed = Number(match[0])
-      if (Number.isFinite(parsed)) return parsed
-    }
-  }
-
   return null
-}
-
-const toPositiveInt = (value) => {
-  const numeric = Number(value)
-  if (!Number.isInteger(numeric) || numeric <= 0) return null
-  return numeric
 }
 
 const normalizeStatus = (value) => {
   const status = (value ?? '').toString().trim().toLowerCase()
-  if (['active', 'completed', 'cancelled'].includes(status)) {
-    return status
-  }
-
+  if (['active', 'completed', 'cancelled'].includes(status)) return status
   return status || 'unknown'
 }
 
@@ -324,41 +279,18 @@ const statusText = (status) => {
     cancelled: 'Cancelled',
     unknown: 'Noma`lum'
   }
-
   return map[normalizeStatus(status)] || status || 'Noma`lum'
 }
 
 const normalizeSession = (raw = {}) => {
   const session = raw?.data ?? raw ?? {}
-
   const id = session.id ?? session.sessionId ?? session.session_id ?? null
   const user = session.user ?? session.userInfo ?? {}
   const computer = session.computer ?? session.computerInfo ?? {}
   const tariff = session.tariff ?? session.tariffInfo ?? {}
 
-  const startedAt = session.startedAt ?? session.startTime ?? session.started_at ?? session.createdAt ?? null
-  const endedAt = session.endedAt ?? session.endTime ?? session.ended_at ?? null
-
-  const durationMinutes = toLooseNumber(
-    session.durationMinutes ?? session.duration_minutes ?? session.duration ?? null
-  )
-
-  const totalCost = toLooseNumber(
-    session.totalCost ?? session.total_cost ?? session.cost ?? session.amount ?? null
-  )
-
-  const currentCost = toLooseNumber(
-    session.currentCost ?? session.current_cost ?? null
-  )
-
-  const pricePerMinute = toLooseNumber(
-    session.pricePerMinute ?? session.price_per_minute ?? null
-  )
-
-  const fallbackKey = `session-${Math.random().toString(36).slice(2, 8)}`
-
   return {
-    key: id !== null ? `id-${id}` : fallbackKey,
+    key: id !== null ? `id-${id}` : `session-${Math.random().toString(36).slice(2, 8)}`,
     id,
     userId: session.userId ?? session.user_id ?? user.id ?? user.userId ?? null,
     userName: session.username ?? session.userName ?? user.username ?? user.fullName ?? null,
@@ -367,72 +299,35 @@ const normalizeSession = (raw = {}) => {
     tariffId: session.tariffId ?? session.tariff_id ?? tariff.id ?? tariff.tariffId ?? null,
     tariffName: session.tariffName ?? tariff.name ?? null,
     status: normalizeStatus(session.status),
-    startedAt,
-    endedAt,
-    durationMinutes,
-    totalCost,
-    currentCost,
-    pricePerMinute,
-    notes: session.notes ?? session.comment ?? null,
-    raw: session
+    startedAt: session.startedAt ?? session.startTime ?? session.started_at ?? session.createdAt ?? null,
+    endedAt: session.endedAt ?? session.endTime ?? session.ended_at ?? null,
+    durationMinutes: toLooseNumber(session.durationMinutes ?? session.duration_minutes ?? session.duration ?? null),
+    totalCost: toLooseNumber(session.totalCost ?? session.total_cost ?? session.cost ?? session.amount ?? null),
+    notes: session.notes ?? session.comment ?? null
   }
 }
 
 const extractSessions = (payload) => {
   const body = extractBody(payload)
-
-  if (Array.isArray(body)) {
-    return body.map((item) => normalizeSession(item))
-  }
-
-  if (!body || typeof body !== 'object') {
-    return []
-  }
+  if (Array.isArray(body)) return body.map((item) => normalizeSession(item))
+  if (!body || typeof body !== 'object') return []
 
   const candidates = [body.items, body.sessions, body.results, body.rows, body.data]
   for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      return candidate.map((item) => normalizeSession(item))
-    }
-  }
-
-  if (body.session && typeof body.session === 'object') {
-    return [normalizeSession(body.session)]
+    if (Array.isArray(candidate)) return candidate.map((item) => normalizeSession(item))
   }
 
   const one = normalizeSession(body)
-  if (one.id !== null || one.userId !== null || one.computerId !== null) {
-    return [one]
-  }
-
-  return []
-}
-
-const dedupeSessions = (list) => {
-  const map = new Map()
-
-  list.forEach((item) => {
-    const key = item.id !== null ? `id-${item.id}` : item.key
-    map.set(key, { ...item, key })
-  })
-
-  return Array.from(map.values())
+  return one.id !== null ? [one] : []
 }
 
 const formatDateTime = (value) => {
   if (!value) return '-'
-
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-
+  if (isNaN(date.getTime())) return value
   return date.toLocaleString('uz-UZ', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit'
   })
 }
 
@@ -443,159 +338,114 @@ const formatMoney = (value) => {
 }
 
 const sessionDurationText = (session) => {
-  const duration = toLooseNumber(
-    session?.durationMinutes ?? session?.currentDurationMinutes ?? null
-  )
+  const duration = toLooseNumber(session?.durationMinutes)
   if (duration === null) return '-'
-  return `${Math.max(0, Math.round(duration))} min`
+  const hours = Math.floor(duration / 60)
+  const mins = duration % 60
+  if (hours === 0) return `${mins} min`
+  return `${hours} soat ${mins} min`
 }
 
 const sessionCostText = (session) => {
-  const current = toLooseNumber(session?.currentCost)
-  if (session?.status === 'active' && current !== null) {
-    return formatMoney(current)
-  }
-
   const total = toLooseNumber(session?.totalCost)
-  if (total !== null) {
-    return formatMoney(total)
-  }
-
-  return '-'
+  return total !== null ? formatMoney(total) : '-'
 }
 
-const stats = computed(() => {
-  const total = sessions.value.length
-  const active = sessions.value.filter((item) => item.status === 'active').length
-  const completed = sessions.value.filter((item) => item.status === 'completed').length
-  const cancelled = sessions.value.filter((item) => item.status === 'cancelled').length
-  const revenue = sessions.value.reduce((sum, item) => sum + (toLooseNumber(item.totalCost) ?? 0), 0)
-
-  return {
-    total,
-    active,
-    completed,
-    cancelled,
-    revenue
-  }
-})
-
-const lastResult = computed(() => {
-  const body = extractBody(lastResponse.value)
-  if (body === null || body === undefined) {
-    return null
-  }
-
-  const list = extractSessions(lastResponse.value)
-  if (list.length > 1) {
-    return {
-      statusText: 'Muvaffaqiyatli',
-      id: null,
-      status: null,
-      count: list.length,
-      cost: null,
-      note: `${list.length} ta sessiya qaytdi.`
-    }
-  }
-
-  if (typeof body !== 'object') {
-    return {
-      statusText: String(body),
-      id: null,
-      status: null,
-      count: null,
-      cost: null,
-      note: null
-    }
-  }
-
-  const id = body.id ?? body.sessionId ?? body.session_id ?? null
-  const status = body.status ?? null
-  const countValue = toLooseNumber(body.count ?? body.total ?? body.length)
-  const count = countValue === null ? null : Math.max(0, Math.round(countValue))
-  const cost = toLooseNumber(body.cost ?? body.totalCost ?? body.total_cost ?? body.amount ?? null)
-  const note = body.message ?? body.description ?? null
-
-  return {
-    statusText: body.statusText ?? (body.message ? 'Muvaffaqiyatli' : 'Bajarildi'),
-    id,
-    status,
-    count,
-    cost,
-    note
-  }
-})
-
-const getErrorMessage = (error) => {
-  const payload = error?.response?.data
-  if (Array.isArray(payload?.message)) {
-    return payload.message.join(', ')
-  }
-
-  return payload?.message || payload?.error || error?.message || 'So`rov bajarilmadi'
-}
-
-const syncFormsBySession = (session) => {
-  if (!session) return
-
-  selectedSession.value = session
-
-  if (session.id !== null) {
-    idForm.sessionId = session.id
-    costForm.sessionId = session.id
-    endForm.sessionId = session.id
-  }
-
-  if (session.userId) startForm.userId = session.userId
-  if (session.computerId) startForm.computerId = session.computerId
-  if (session.tariffId) startForm.tariffId = session.tariffId
-}
+const stats = computed(() => ({
+  total: sessions.value.length,
+  active: sessions.value.filter((item) => item.status === 'active').length,
+  completed: sessions.value.filter((item) => item.status === 'completed').length,
+  cancelled: sessions.value.filter((item) => item.status === 'cancelled').length,
+  revenue: sessions.value.reduce((sum, item) => sum + (toLooseNumber(item.totalCost) ?? 0), 0)
+}))
 
 const selectSession = (session) => {
-  syncFormsBySession(session)
+  selectedSession.value = session
 }
 
 const clearSelection = () => {
   selectedSession.value = null
 }
 
-const applyList = (list) => {
-  sessions.value = dedupeSessions(list)
+// Sessiyani tugatish modalini ochish
+const endSession = (sessionId) => {
+  const session = sessions.value.find(s => s.id === sessionId)
+  if (!session) {
+    ElMessage.warning('Sessiya topilmadi')
+    return
+  }
+  
+  if (session.status !== 'active') {
+    ElMessage.warning('Faqat faol sessiyalarni tugatish mumkin')
+    return
+  }
+  
+  sessionToEnd.value = session
+  endNotes.value = ''
+  showEndModal.value = true
+}
 
-  if (!sessions.value.length) {
-    clearSelection()
+// Sessiyani tugatishni tasdiqlash
+const confirmEndSession = async () => {
+  if (!sessionToEnd.value) return
+  
+  endLoading.value = true
+  try {
+    const payload = {
+      notes: endNotes.value.trim() || `${sessionToEnd.value.userName || sessionToEnd.value.userId} tomonidan tugatildi`
+    }
+    
+    await sessionsApi.endSession(sessionToEnd.value.id, payload)
+    ElMessage.success('Sessiya muvaffaqiyatli tugatildi!')
+    closeEndModal()
+    await runGetAll()
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || error?.message || 'Sessiyani tugatishda xatolik')
+  } finally {
+    endLoading.value = false
+  }
+}
+
+const closeEndModal = () => {
+  showEndModal.value = false
+  sessionToEnd.value = null
+  endNotes.value = ''
+}
+
+// Sessiyani o'chirish
+const deleteSession = async (sessionId) => {
+  if (!sessionId) {
+    ElMessage.warning('Sessiya ID topilmadi')
     return
   }
 
-  const nextSelected =
-    sessions.value.find((item) => item.id !== null && item.id === selectedSession.value?.id) ||
-    sessions.value[0]
+  try {
+    await ElMessageBox.confirm(
+      'Sessiyani o\'chirishni tasdiqlaysizmi?',
+      'O\'chirish',
+      { confirmButtonText: 'Ha', cancelButtonText: 'Yo\'q', type: 'warning' }
+    )
 
-  syncFormsBySession(nextSelected)
-}
-
-const upsertSession = (session) => {
-  const list = [...sessions.value]
-  const index = list.findIndex((item) => item.id !== null && item.id === session.id)
-
-  if (index >= 0) {
-    list[index] = { ...list[index], ...session }
-  } else {
-    list.unshift(session)
+    loading.value = true
+    await sessionsApi.deleteSession(sessionId)
+    ElMessage.success('Sessiya o\'chirildi')
+    await runGetAll()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.response?.data?.message || error?.message || 'O\'chirishda xatolik')
+    }
+  } finally {
+    loading.value = false
   }
-
-  applyList(list)
 }
 
-const runWithToast = async (request, message, actionLabel = '') => {
+const runWithToast = async (request, message) => {
   try {
     const response = await request()
-    lastResponse.value = response
-    lastAction.value = actionLabel || message || ''
     if (message) ElMessage.success(message)
     return response
   } catch (error) {
-    ElMessage.error(getErrorMessage(error))
+    ElMessage.error(error?.response?.data?.message || error?.message || 'So`rov bajarilmadi')
     return null
   }
 }
@@ -610,12 +460,9 @@ const runGetAll = async () => {
   loading.value = true
   const response = await runWithToast(
     () => sessionsApi.getAllSessions(buildFilterParams()),
-    'Sessiyalar yuklandi',
-    'Sessiyalar ro`yxati'
+    'Sessiyalar yuklandi'
   )
-  if (response) {
-    applyList(extractSessions(response))
-  }
+  if (response) sessions.value = extractSessions(response)
   loading.value = false
 }
 
@@ -623,137 +470,32 @@ const runGetActive = async () => {
   loading.value = true
   const response = await runWithToast(
     () => sessionsApi.getActiveSessions(),
-    'Faol sessiyalar yuklandi',
-    'Faol sessiyalar'
+    'Faol sessiyalar yuklandi'
   )
-  if (response) {
-    applyList(extractSessions(response))
-  }
+  if (response) sessions.value = extractSessions(response)
   loading.value = false
 }
 
 const resetFilters = async () => {
-  filters.status = 'active'
+  filters.status = ''
   filters.startDate = ''
   filters.endDate = ''
-
   await runGetAll()
 }
 
-const runGetById = async () => {
-  const sessionId = toPositiveInt(idForm.sessionId)
-  if (!sessionId) {
-    ElMessage.warning('Session ID kiriting')
-    return
-  }
-
-  const response = await runWithToast(
-    () => sessionsApi.getSessionById(sessionId),
-    'Sessiya topildi',
-    `Session by ID (${sessionId})`
-  )
-  if (!response) return
-
-  const found = extractSessions(response)[0]
-  if (!found) {
-    ElMessage.warning('Sessiya topilmadi')
-    return
-  }
-
-  upsertSession(found)
-}
-
-const runGetCost = async () => {
-  const sessionId = toPositiveInt(costForm.sessionId)
-  if (!sessionId) {
-    ElMessage.warning('Session ID kiriting')
-    return
-  }
-
-  const response = await runWithToast(
-    () => sessionsApi.getSessionCost(sessionId),
-    'Joriy narx olindi',
-    `Session cost (${sessionId})`
-  )
-  if (!response) return
-
-  const body = extractBody(response) ?? {}
-  const cost = toLooseNumber(body.cost ?? body.totalCost ?? body.total_cost ?? null)
-  const durationMinutes = toLooseNumber(body.durationMinutes ?? body.duration_minutes ?? null)
-  const pricePerMinute = toLooseNumber(body.pricePerMinute ?? body.price_per_minute ?? null)
-
-  const existing = sessions.value.find((item) => item.id === sessionId)
-  if (existing) {
-    upsertSession({
-      ...existing,
-      currentCost: cost,
-      currentDurationMinutes: durationMinutes,
-      pricePerMinute: pricePerMinute ?? existing.pricePerMinute
-    })
-  }
-}
-
-const runStart = async () => {
-  const userId = toPositiveInt(startForm.userId)
-  const computerId = toPositiveInt(startForm.computerId)
-  const tariffId = toPositiveInt(startForm.tariffId)
-
-  if (!userId || !computerId || !tariffId) {
-    ElMessage.warning('userId, computerId va tariffId musbat son bo`lishi kerak')
-    return
-  }
-
-  const payload = {
-    userId,
-    computerId,
-    tariffId
-  }
-
-  const notes = startForm.notes?.trim()
-  if (notes) {
-    payload.notes = notes
-  }
-
-  const response = await runWithToast(
-    () => sessionsApi.startSession(payload),
-    'Sessiya boshlandi',
-    `Session start (user ${userId}, computer ${computerId})`
-  )
-  if (!response) return
-
-  await runGetActive()
-}
-
-const runEnd = async () => {
-  const sessionId = toPositiveInt(endForm.sessionId)
-  if (!sessionId) {
-    ElMessage.warning('Session ID kiriting')
-    return
-  }
-
-  const response = await runWithToast(
-    () => sessionsApi.endSession(sessionId),
-    'Sessiya tugatildi',
-    `Session end (${sessionId})`
-  )
-  if (!response) return
-
-  await runGetAll()
-}
-
-onMounted(async () => {
-  await runGetAll()
-})
+onMounted(() => runGetAll())
 </script>
 
 <style scoped>
 .sessions-page {
   display: grid;
   gap: 14px;
+  padding: 20px;
+  background: linear-gradient(135deg, #0a0f1a 0%, #0c1220 100%);
+  min-height: 100vh;
 }
 
-.hero-panel,
-.data-panel {
+.hero-panel, .data-panel {
   border-radius: 20px;
   border: 1px solid rgba(125, 190, 255, 0.3);
   background: linear-gradient(145deg, rgba(8, 20, 44, 0.92), rgba(10, 27, 59, 0.75));
@@ -775,20 +517,17 @@ onMounted(async () => {
   color: #9fc8ff;
 }
 
-h2,
-h3 {
+h2, h3 {
   margin: 4px 0 0;
   color: #f4f9ff;
 }
 
-.subtitle,
-.panel-head p {
+.subtitle, .panel-head p {
   margin: 8px 0 0;
   color: #a8bfdc;
 }
 
-.hero-actions,
-.inline-row {
+.hero-actions, .inline-row {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -826,16 +565,28 @@ h3 {
   color: #e4f1ff;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .btn.primary {
   background: linear-gradient(180deg, rgba(33, 115, 230, 0.75), rgba(24, 72, 151, 0.8));
 }
 
+.btn.warning {
+  border-color: rgba(255, 193, 7, 0.45);
+  color: #ffc107;
+  background: rgba(255, 193, 7, 0.15);
+}
+
 .btn.danger {
   border-color: rgba(255, 131, 131, 0.45);
   color: #ffd5d5;
   background: rgba(124, 38, 38, 0.55);
+}
+
+.btn.small {
+  padding: 6px 12px;
+  font-size: 12px;
 }
 
 .btn:disabled {
@@ -872,31 +623,36 @@ h3 {
 .panel-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(125, 190, 255, 0.2);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
 }
 
 .table-wrap {
   margin-top: 12px;
   border-radius: 14px;
-  overflow: hidden;
-  border: 1px solid rgba(133, 191, 255, 0.2);
+  overflow-x: auto;
 }
 
-table {
+.data-table {
   width: 100%;
   border-collapse: collapse;
 }
 
-th,
-td {
+th, td {
   text-align: left;
-  padding: 10px 8px;
+  padding: 12px 10px;
   border-bottom: 1px solid rgba(136, 195, 255, 0.14);
   color: #bdd1e9;
   font-size: 13px;
-  white-space: nowrap;
 }
 
 th {
@@ -921,102 +677,33 @@ tbody tr.selected {
 
 .status-pill {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 999px;
-  border: 1px solid rgba(139, 196, 255, 0.32);
   padding: 4px 10px;
   font-size: 11px;
-  line-height: 1;
 }
 
 .status-active {
-  color: #d4ffe5;
-  border-color: rgba(111, 214, 165, 0.5);
   background: rgba(33, 115, 78, 0.35);
+  color: #d4ffe5;
+  border: 1px solid rgba(111, 214, 165, 0.5);
 }
 
 .status-completed {
-  color: #d7ecff;
-  border-color: rgba(140, 200, 255, 0.4);
   background: rgba(30, 79, 145, 0.36);
+  color: #d7ecff;
+  border: 1px solid rgba(140, 200, 255, 0.4);
 }
 
 .status-cancelled {
-  color: #f7d9d9;
-  border-color: rgba(214, 130, 130, 0.45);
   background: rgba(126, 48, 48, 0.32);
+  color: #f7d9d9;
+  border: 1px solid rgba(214, 130, 130, 0.45);
 }
 
-.status-unknown {
-  color: #dbe7f5;
-  border-color: rgba(188, 206, 229, 0.45);
-  background: rgba(73, 88, 110, 0.35);
-}
-
-.forms-grid {
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
-
-.form-card {
-  border-radius: 18px;
-  border: 1px solid rgba(128, 188, 255, 0.3);
-  background: linear-gradient(150deg, rgba(10, 30, 62, 0.74), rgba(8, 21, 44, 0.9));
-  padding: 14px;
-  display: grid;
-  gap: 12px;
-}
-
-.form-grid {
-  display: grid;
-  gap: 10px;
-}
-
-.form-grid label {
-  display: grid;
+.actions-col {
+  white-space: nowrap;
+  display: flex;
   gap: 6px;
-}
-
-.form-grid span {
-  font-size: 12px;
-  color: #a7c1e2;
-}
-
-input,
-select {
-  border-radius: 10px;
-  border: 1px solid rgba(128, 188, 255, 0.34);
-  background: rgba(11, 33, 69, 0.58);
-  color: #eaf4ff;
-  padding: 9px 11px;
-  outline: none;
-}
-
-.selected-box {
-  margin-top: 8px;
-  border-radius: 12px;
-  border: 1px dashed rgba(138, 197, 255, 0.4);
-  padding: 10px;
-  background: rgba(10, 28, 57, 0.45);
-  display: grid;
-  gap: 4px;
-}
-
-.selected-box p {
-  margin: 0;
-  color: #9fc2e6;
-  font-size: 12px;
-}
-
-.selected-box strong {
-  color: #fff;
-}
-
-.selected-box span {
-  color: #bdd4ed;
-  font-size: 12px;
 }
 
 .detail-grid {
@@ -1054,16 +741,211 @@ select {
   margin-top: 14px;
   border: 1px dashed rgba(133, 192, 255, 0.3);
   border-radius: 14px;
-  padding: 16px;
+  padding: 32px;
   text-align: center;
   color: #a9c1e0;
   background: rgba(13, 35, 72, 0.3);
 }
 
-@media (max-width: 980px) {
-  table {
-    display: block;
-    overflow-x: auto;
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-container {
+  background: linear-gradient(145deg, rgba(8, 20, 44, 0.98), rgba(10, 27, 59, 0.95));
+  border-radius: 24px;
+  border: 1px solid rgba(74, 144, 226, 0.4);
+  width: 90%;
+  max-width: 500px;
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(74, 144, 226, 0.2);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #f4f9ff;
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.session-info {
+  background: rgba(74, 144, 226, 0.1);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(74, 144, 226, 0.2);
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-row span {
+  color: #9ec0e4;
+  font-size: 13px;
+}
+
+.info-row strong {
+  color: #fff;
+  font-size: 14px;
+}
+
+.info-row.highlight strong {
+  color: #ffc107;
+  font-size: 18px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  color: #9ec0e4;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.modal-textarea {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(74, 144, 226, 0.3);
+  background: rgba(11, 33, 69, 0.6);
+  color: #fff;
+  font-size: 14px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.modal-textarea:focus {
+  outline: none;
+  border-color: rgba(74, 144, 226, 0.8);
+}
+
+.modal-textarea::placeholder {
+  color: rgba(158, 192, 228, 0.5);
+}
+
+.warning-box {
+  background: rgba(255, 193, 7, 0.1);
+  border-left: 3px solid #ffc107;
+  padding: 12px;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+}
+
+.warning-box span {
+  font-size: 20px;
+}
+
+.warning-box p {
+  margin: 0 0 8px 0;
+  color: #ffc107;
+  font-weight: 600;
+}
+
+.warning-box ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.warning-box li {
+  color: #bdd4ed;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(74, 144, 226, 0.2);
+}
+
+.modal-footer .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.modal-footer .btn.cancel {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+  .sessions-page {
+    padding: 12px;
+  }
+  
+  .data-table {
+    font-size: 12px;
+  }
+  
+  th, td {
+    padding: 8px 6px;
+  }
+  
+  .actions-col {
+    flex-direction: column;
+  }
+  
+  .modal-container {
+    width: 95%;
+    margin: 10px;
   }
 }
 </style>

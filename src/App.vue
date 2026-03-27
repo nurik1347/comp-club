@@ -20,5 +20,4 @@ onMounted(async () => {
 </script>
 
 <style>
-/* global styles keyin qo'shamiz */
 </style>

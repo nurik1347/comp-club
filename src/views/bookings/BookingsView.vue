@@ -4,12 +4,48 @@
       <div class="title-row">
         <div>
           <h2>📅 Bronlar (Band qilingan kompyuterlar)</h2>
-          <p class="subtitle">Faqat bron qilingan kompyuterlar ro‘yxati</p>
+          <p class="subtitle">Kompyuterlar bron qilingan vaqt oralig'i</p>
         </div>
-        <button type="button" class="btn refresh" :disabled="loading" @click="runGetAll">
-          <span class="btn-icon">🔄</span>
-          {{ loading ? 'Yangilanmoqda...' : 'Yangilash' }}
-        </button>
+        <div class="action-buttons">
+          <div class="filter-group">
+            <button 
+              type="button" 
+              class="filter-btn" 
+              :class="{ active: activeFilter === 'all' }"
+              @click="setFilter('all')"
+            >
+              📋 Hammasi
+            </button>
+            <button 
+              type="button" 
+              class="filter-btn" 
+              :class="{ active: activeFilter === 'active' }"
+              @click="setFilter('active')"
+            >
+              ✅ Faol
+            </button>
+            <button 
+              type="button" 
+              class="filter-btn" 
+              :class="{ active: activeFilter === 'confirmed' }"
+              @click="setFilter('confirmed')"
+            >
+              ✓ Tasdiqlangan
+            </button>
+            <button 
+              type="button" 
+              class="filter-btn" 
+              :class="{ active: activeFilter === 'pending' }"
+              @click="setFilter('pending')"
+            >
+              ⏳ Kutilmoqda
+            </button>
+          </div>
+          <button type="button" class="btn refresh" :disabled="loading" @click="runGetAll">
+            <span class="btn-icon">🔄</span>
+            {{ loading ? 'Yangilanmoqda...' : 'Yangilash' }}
+          </button>
+        </div>
       </div>
 
       <div v-if="loading" class="loading-state">
@@ -17,61 +53,72 @@
         <p>Yuklanmoqda...</p>
       </div>
 
-      <div v-else-if="rows.length" class="table-wrapper">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>👤 Foydalanuvchi</th>
-              <th>💻 Kompyuter</th>
-              <th>⏰ Boshlanishi</th>
-              <th>⏰ Tugashi</th>
-              <th>📊 Status</th>
-              <th>⚡ Amallar</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="item in rows" :key="item.id || item.bookingId">
-              <td class="id-col">#{{ item.id ?? item.bookingId ?? '-' }}</td>
-              <td class="user-col">
-                <div class="user-info">
-                  <span class="user-icon">👤</span>
-                  {{ item.user?.username || item.username || '-' }}
-                </div>
-              </td>
-              <td class="computer-col">
-                <div class="computer-info">
-                  <span class="computer-icon">💻</span>
-                  {{ item.computer?.name || item.computerName || '-' }}
-                </div>
-              </td>
-              <td class="date-col">{{ formatDate(item.bookedFrom) }}</td>
-              <td class="date-col">{{ formatDate(item.bookedUntil) }}</td>
-              <td class="status-col">
-                <span :class="['status-badge', getStatusClass(item.status)]">
-                  {{ getStatusText(item.status) }}
-                </span>
-              </td>
-              <td class="actions-col">
-                <button 
-                  class="btn small danger" 
-                  @click="runCancel(item.id || item.bookingId)"
-                  :disabled="loading"
-                >
-                  ❌ Bekor qilish
-                </button>
-                <button 
-                  v-if="item.status !== 'confirmed'" 
-                  class="btn small success" 
-                  @click="runConfirm(item.id || item.bookingId)"
-                  :disabled="loading"
-                >
-                  ✓ Tasdiqlash
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-else-if="filteredRows.length" class="bookings-grid">
+        <div 
+          v-for="item in filteredRows" 
+          :key="item.id || item.bookingId" 
+          class="booking-card"
+          :class="getCardClass(item.status)"
+        >
+          <div class="card-header">
+            <div class="computer-info-large">
+              <span class="computer-icon-large">💻</span>
+              <div>
+                <h4>{{ item.computer?.name || item.computerName || 'Kompyuter' }}</h4>
+                <span class="computer-id">ID: {{ item.computerId || item.computer?.id || '-' }}</span>
+              </div>
+            </div>
+            <span :class="['status-badge-large', getStatusClass(item.status)]">
+              {{ getStatusText(item.status) }}
+            </span>
+          </div>
+
+          <div class="booking-details">
+            <div class="detail-row">
+              <span class="detail-label">📅 Bron qilingan vaqt:</span>
+              <span class="detail-value">{{ formatDateTimeRange(item.bookedFrom, item.bookedUntil) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">⏰ Boshlanish:</span>
+              <span class="detail-value">{{ formatDateTime(item.bookedFrom) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">⏰ Tugash:</span>
+              <span class="detail-value">{{ formatDateTime(item.bookedUntil) }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">📊 Davomiylik:</span>
+              <span class="detail-value highlight">{{ formatDuration(item.bookedFrom, item.bookedUntil) }}</span>
+            </div>
+          </div>
+
+          <div class="card-footer">
+            <div class="status-info">
+              <span class="status-label">Holati:</span>
+              <span :class="['status-text', getStatusClass(item.status)]">
+                {{ getStatusText(item.status) }}
+              </span>
+            </div>
+            <div class="action-buttons-card">
+              <button 
+                v-if="item.status !== 'cancelled' && item.status !== 'expired'"
+                class="btn small danger" 
+                @click="runCancel(item.id || item.bookingId)"
+                :disabled="loading"
+              >
+                ❌ Bekor qilish
+              </button>
+              <button 
+                v-if="item.status === 'pending'" 
+                class="btn small success" 
+                @click="runConfirm(item.id || item.bookingId)"
+                :disabled="loading"
+              >
+                ✓ Tasdiqlash
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-else class="empty-state">
@@ -84,7 +131,6 @@
       </div>
     </article>
 
-    <!-- Natija (JSON) -->
     <article class="panel json-panel">
       <div class="panel-header">
         <h3>📡 API javobi</h3>
@@ -98,7 +144,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import bookingsApi from '@/api/bookings'
@@ -107,8 +153,9 @@ const router = useRouter()
 const rows = ref([])
 const lastResponse = ref(null)
 const loading = ref(false)
+const activeFilter = ref('active')
 
-const formatDate = (iso) => {
+const formatDateTime = (iso) => {
   if (!iso) return '-'
   const date = new Date(iso)
   if (isNaN(date.getTime())) return '-'
@@ -122,11 +169,42 @@ const formatDate = (iso) => {
   })
 }
 
+const formatDateTimeRange = (from, to) => {
+  if (!from || !to) return '-'
+  const fromDate = formatDateTime(from)
+  const toDate = formatDateTime(to)
+  return `${fromDate} - ${toDate}`
+}
+
+const formatDuration = (from, to) => {
+  if (!from || !to) return '-'
+  const start = new Date(from)
+  const end = new Date(to)
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return '-'
+  
+  const diffMs = end - start
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+  
+  if (diffHours > 0) {
+    return `${diffHours} soat ${diffMinutes} minut`
+  }
+  return `${diffMinutes} minut`
+}
+
 const getStatusClass = (status) => {
   if (status === 'confirmed') return 'confirmed'
   if (status === 'pending') return 'pending'
   if (status === 'cancelled') return 'cancelled'
   if (status === 'expired') return 'expired'
+  return ''
+}
+
+const getCardClass = (status) => {
+  if (status === 'confirmed') return 'card-confirmed'
+  if (status === 'pending') return 'card-pending'
+  if (status === 'cancelled') return 'card-cancelled'
+  if (status === 'expired') return 'card-expired'
   return ''
 }
 
@@ -138,6 +216,24 @@ const getStatusText = (status) => {
     expired: 'Muddati o‘tgan'
   }
   return statusMap[status] || status || 'Nomaʼlum'
+}
+
+const filteredRows = computed(() => {
+  if (activeFilter.value === 'all') {
+    return rows.value
+  }
+  
+  if (activeFilter.value === 'active') {
+    return rows.value.filter(item => 
+      item.status !== 'cancelled' && item.status !== 'expired'
+    )
+  }
+  
+  return rows.value.filter(item => item.status === activeFilter.value)
+})
+
+const setFilter = (filter) => {
+  activeFilter.value = filter
 }
 
 const pretty = (value) => {
@@ -154,9 +250,12 @@ const runWithToast = async (request, successMsg) => {
   try {
     const response = await request()
     lastResponse.value = response
-    rows.value = Array.isArray(response) 
+    let allBookings = Array.isArray(response) 
       ? response 
       : response?.bookings || response?.items || response?.data || []
+    
+    rows.value = allBookings
+    
     if (successMsg) {
       ElMessage({
         message: successMsg,
@@ -205,7 +304,6 @@ const runConfirm = (id) => {
   min-height: 100vh;
 }
 
-/* Panel Cards */
 .panel {
   background: linear-gradient(145deg, rgba(15, 25, 45, 0.95), rgba(10, 18, 32, 0.95));
   backdrop-filter: blur(10px);
@@ -234,7 +332,6 @@ const runConfirm = (id) => {
   border-bottom: 1px solid rgba(74, 144, 226, 0.2);
 }
 
-/* Title Row */
 .title-row {
   display: flex;
   justify-content: space-between;
@@ -260,6 +357,229 @@ const runConfirm = (id) => {
   color: #8a9dc0;
   font-size: 14px;
   margin-top: 8px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  gap: 8px;
+  background: rgba(10, 28, 57, 0.5);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(74, 144, 226, 0.3);
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  color: #8a9dc0;
+}
+
+.filter-btn:hover {
+  color: #b8ceff;
+  background: rgba(74, 144, 226, 0.1);
+}
+
+.filter-btn.active {
+  background: linear-gradient(135deg, rgba(74, 144, 226, 0.3), rgba(74, 144, 226, 0.2));
+  color: #7db9ff;
+  border: 1px solid rgba(74, 144, 226, 0.5);
+}
+
+/* Bookings Grid */
+.bookings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 20px;
+}
+
+.booking-card {
+  background: rgba(10, 28, 57, 0.6);
+  border-radius: 20px;
+  border: 1px solid rgba(74, 144, 226, 0.3);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.booking-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+  border-color: rgba(74, 144, 226, 0.6);
+}
+
+.card-confirmed {
+  border-left: 4px solid #6bc46b;
+}
+
+.card-pending {
+  border-left: 4px solid #ffc107;
+}
+
+.card-cancelled {
+  border-left: 4px solid #adb5bd;
+  opacity: 0.7;
+}
+
+.card-expired {
+  border-left: 4px solid #ff6b6b;
+  opacity: 0.7;
+}
+
+.card-header {
+  padding: 16px 20px;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(74, 144, 226, 0.2);
+}
+
+.computer-info-large {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.computer-icon-large {
+  font-size: 32px;
+}
+
+.computer-info-large h4 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.computer-id {
+  font-size: 11px;
+  color: #7db9ff;
+  font-family: monospace;
+}
+
+.status-badge-large {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-badge-large.confirmed {
+  background: rgba(40, 167, 69, 0.2);
+  border: 1px solid rgba(40, 167, 69, 0.4);
+  color: #6bc46b;
+}
+
+.status-badge-large.pending {
+  background: rgba(255, 193, 7, 0.2);
+  border: 1px solid rgba(255, 193, 7, 0.4);
+  color: #ffc107;
+}
+
+.status-badge-large.cancelled {
+  background: rgba(108, 117, 125, 0.2);
+  border: 1px solid rgba(108, 117, 125, 0.4);
+  color: #adb5bd;
+}
+
+.status-badge-large.expired {
+  background: rgba(220, 53, 69, 0.2);
+  border: 1px solid rgba(220, 53, 69, 0.4);
+  color: #ff6b6b;
+}
+
+.booking-details {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px dashed rgba(74, 144, 226, 0.2);
+}
+
+.detail-label {
+  color: #9ec0e4;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.detail-value {
+  color: #d4e4ff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.detail-value.highlight {
+  color: #7db9ff;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.card-footer {
+  padding: 16px 20px;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid rgba(74, 144, 226, 0.2);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-label {
+  color: #9ec0e4;
+  font-size: 12px;
+}
+
+.status-text {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.status-text.confirmed {
+  color: #6bc46b;
+}
+
+.status-text.pending {
+  color: #ffc107;
+}
+
+.status-text.cancelled {
+  color: #adb5bd;
+  text-decoration: line-through;
+}
+
+.status-text.expired {
+  color: #ff6b6b;
+}
+
+.action-buttons-card {
+  display: flex;
+  gap: 8px;
 }
 
 /* Buttons */
@@ -338,7 +658,6 @@ const runConfirm = (id) => {
   box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
 }
 
-/* Loading State */
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -366,124 +685,6 @@ const runConfirm = (id) => {
   font-size: 14px;
 }
 
-/* Table Styles */
-.table-wrapper {
-  overflow-x: auto;
-  border-radius: 16px;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.data-table thead {
-  background: linear-gradient(135deg, rgba(74, 144, 226, 0.15), rgba(74, 144, 226, 0.05));
-  border-bottom: 1px solid rgba(74, 144, 226, 0.3);
-}
-
-.data-table th {
-  padding: 14px 12px;
-  text-align: left;
-  font-weight: 600;
-  color: #b8ceff;
-  font-size: 13px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-
-.data-table td {
-  padding: 14px 12px;
-  border-bottom: 1px solid rgba(74, 144, 226, 0.1);
-  color: #d4e4ff;
-}
-
-.data-table tbody tr {
-  transition: all 0.2s ease;
-}
-
-.data-table tbody tr:hover {
-  background: rgba(74, 144, 226, 0.05);
-  transform: scale(1.01);
-}
-
-.id-col {
-  font-weight: 600;
-  color: #7db9ff;
-  font-family: monospace;
-}
-
-.user-col, .computer-col {
-  font-weight: 500;
-}
-
-.user-info, .computer-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.user-icon, .computer-icon {
-  font-size: 16px;
-  opacity: 0.8;
-}
-
-.date-col {
-  font-family: monospace;
-  font-size: 12px;
-  color: #9ab3d9;
-}
-
-/* Status Badges */
-.status-col {
-  width: 120px;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  text-align: center;
-  letter-spacing: 0.3px;
-}
-
-.status-badge.confirmed {
-  background: rgba(40, 167, 69, 0.2);
-  border: 1px solid rgba(40, 167, 69, 0.4);
-  color: #6bc46b;
-}
-
-.status-badge.pending {
-  background: rgba(255, 193, 7, 0.2);
-  border: 1px solid rgba(255, 193, 7, 0.4);
-  color: #ffc107;
-}
-
-.status-badge.cancelled {
-  background: rgba(108, 117, 125, 0.2);
-  border: 1px solid rgba(108, 117, 125, 0.4);
-  color: #adb5bd;
-  text-decoration: line-through;
-}
-
-.status-badge.expired {
-  background: rgba(220, 53, 69, 0.2);
-  border: 1px solid rgba(220, 53, 69, 0.4);
-  color: #ff6b6b;
-}
-
-/* Actions Column */
-.actions-col {
-  white-space: nowrap;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* Empty State */
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -506,7 +707,6 @@ const runConfirm = (id) => {
   margin-bottom: 24px;
 }
 
-/* JSON Box */
 .json-box {
   background: rgba(0, 0, 0, 0.4);
   border-radius: 12px;
@@ -539,21 +739,6 @@ const runConfirm = (id) => {
   background: rgba(74, 144, 226, 0.6);
 }
 
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .page-wrap {
-    padding: 16px;
-  }
-  
-  .panel {
-    padding: 20px;
-  }
-  
-  .title-row h2 {
-    font-size: 24px;
-  }
-}
-
 @media (max-width: 768px) {
   .page-wrap {
     padding: 12px;
@@ -564,48 +749,40 @@ const runConfirm = (id) => {
     padding: 16px;
   }
   
+  .bookings-grid {
+    grid-template-columns: 1fr;
+  }
+  
   .title-row {
+    flex-direction: column;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+  }
+  
+  .filter-group {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .filter-btn {
+    flex: 1;
+    text-align: center;
+  }
+  
+  .card-footer {
     flex-direction: column;
     align-items: stretch;
   }
   
-  .title-row h2 {
-    font-size: 20px;
+  .action-buttons-card {
+    justify-content: center;
   }
   
-  .data-table th,
-  .data-table td {
-    padding: 10px 8px;
-    font-size: 12px;
-  }
-  
-  .actions-col {
+  .detail-row {
     flex-direction: column;
     gap: 4px;
-  }
-  
-  .btn.small {
-    padding: 4px 10px;
-    font-size: 11px;
-  }
-  
-  .status-badge {
-    font-size: 10px;
-    padding: 3px 8px;
-  }
-}
-
-@media (max-width: 640px) {
-  .data-table {
-    font-size: 11px;
-  }
-  
-  .date-col {
-    font-size: 10px;
-  }
-  
-  .id-col {
-    font-size: 11px;
   }
 }
 </style>

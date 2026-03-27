@@ -8,9 +8,7 @@ const api = axios.create({
   }
 })
 
-/**
- * Auth endpointlari (login va refresh) uchun token qo‘shilmaydi
- */
+
 const isAuthRequest = (url = '') => {
   return [
     '/api/auth/admin/login',
@@ -20,7 +18,6 @@ const isAuthRequest = (url = '') => {
   ].some((path) => url.includes(path))
 }
 
-// ==================== REQUEST INTERCEPTOR ====================
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken')
@@ -32,19 +29,18 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// ==================== RESPONSE INTERCEPTOR ====================
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config
     const requestUrl = originalRequest?.url || ''
 
-    // Auth endpointlarida xato bo‘lsa — qayta urinish kerak emas
+
     if (isAuthRequest(requestUrl)) {
       return Promise.reject(error)
     }
 
-    // 401 va hali retry qilinmagan bo‘lsa → token refresh
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
 
@@ -58,15 +54,11 @@ api.interceptors.response.use(
         )
 
         const newAccessToken = res.data.accessToken
-
-        // Yangi tokenni saqlash
         localStorage.setItem('accessToken', newAccessToken)
-
-        // Original so‘rovni yangi token bilan qayta yuborish
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return api(originalRequest)
       } catch (refreshError) {
-        // Refresh ham muvaffaqiyatsiz bo‘lsa — logout
+
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
 

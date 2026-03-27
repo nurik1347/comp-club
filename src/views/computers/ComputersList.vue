@@ -7,12 +7,13 @@
           <p class="kicker">Computer Control Center</p>
           <h2>Kompyuterlar boshqaruvi</h2>
           <p class="subtitle">
-            Har bir card ustiga bosing → bron qilish taklifi chiqadi
+            Har bir card ustiga bosing → bron qilish yoki sessiya yoqish
           </p>
         </div>
 
         <div class="hero-actions">
-          <button type="button" class="btn primary" :disabled="loading" @click="runGetAll">            {{ loading ? 'Yuklanmoqda...' : 'Barchasini yangilash' }}
+          <button type="button" class="btn primary" :disabled="loading" @click="runGetAll">
+            {{ loading ? 'Yuklanmoqda...' : 'Barchasini yangilash' }}
           </button>
           <button type="button" class="btn" :disabled="loading" @click="runGetAvailable">Faqat bo‘sh</button>
           <button type="button" class="btn" :disabled="loading" @click="runGetMap">Map ma‘lumot</button>
@@ -53,7 +54,7 @@
     <article class="data-panel">
       <div class="panel-head">
         <h3>Kompyuterlar ro‘yxati</h3>
-        <p>Card ustiga bosing → bron qilish mumkin</p>
+        <p>Card ustiga bosing → bron qilish yoki sessiya yoqish</p>
       </div>
 
       <div class="cards-grid" v-if="computers.length">
@@ -107,9 +108,9 @@
           <label><span>Zone ID</span><input v-model.number="createForm.zoneId" type="number" /></label>
           <label><span>IP manzil</span><input v-model.trim="createForm.ipAddress" type="text" /></label>
           <div class="triple-grid">
-            <label><span>CPU</span><input class="input-xarekteristik" v-model.trim="createForm.cpu" type="text" /></label>
-            <label><span>RAM</span><input class="input-xarekteristik" v-model.trim="createForm.ram" type="text" /></label>
-            <label><span>GPU</span><input class="input-xarekteristik" v-model.trim="createForm.gpu" type="text" /></label>
+            <label><span>CPU</span><input class="input-xarakteristik" v-model.trim="createForm.cpu" type="text" /></label>
+            <label><span>RAM</span><input class="input-xarakteristik" v-model.trim="createForm.ram" type="text" /></label>
+            <label><span>GPU</span><input class="input-xarakteristik" v-model.trim="createForm.gpu" type="text" /></label>
           </div>
           <button type="submit" class="btn primary">Kompyuter yaratish</button>
         </form>
@@ -184,10 +185,83 @@
     </article>
 
     <!-- API natijasi -->
-    <!-- <article class="data-panel">
+    <article class="data-panel">
       <div class="panel-head"><h3>API natijasi</h3></div>
       <pre class="json-box">{{ pretty(lastResponse) }}</pre>
-    </article> -->
+    </article>
+
+    <!-- Sessiya yoqish modal -->
+    <Teleport to="body">
+      <div v-if="showSessionModal" class="modal-overlay" @click.self="closeSessionModal">
+        <div class="modal-container">
+          <div class="modal-header">
+            <h3>▶️ Sessiya yoqish</h3>
+            <button class="close-btn" @click="closeSessionModal">✕</button>
+          </div>
+          
+          <div class="modal-body">
+            <div class="computer-info">
+              <strong>{{ selectedComputerForSession?.name || `PC-${selectedComputerForSession?.number}` }}</strong>
+              <span>Zona: {{ selectedComputerForSession?.zoneName || '-' }}</span>
+              <span>ID: {{ selectedComputerForSession?.id }}</span>
+            </div>
+
+            <div class="form-group">
+              <label>👤 Foydalanuvchi ID</label>
+              <input 
+                v-model.number="sessionUserId" 
+                type="number" 
+                placeholder="User ID (masalan: 1, 2, 3...)"
+                class="modal-input"
+                min="1"
+              />
+              <small class="input-hint">⚠️ Agar user ID kiritilmasa, avtomatik yangi foydalanuvchi yaratiladi</small>
+            </div>
+
+            <div class="form-group">
+              <label>💰 Tarif</label>
+              <select v-model="sessionTariff" class="modal-select">
+                <option v-for="t in availableTariffs" :key="t.id" :value="t">
+                  {{ t.name }} - {{ formatMoney(t.pricePerHour || t.pricePerMinute * 60) }}/soat
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>⏱️ Davomiylik (daqiqa)</label>
+              <div class="duration-control">
+                <button type="button" class="duration-btn" @click="sessionDuration = Math.max(15, sessionDuration - 15)">-15</button>
+                <input v-model.number="sessionDuration" type="number" min="15" step="15" class="duration-input" />
+                <button type="button" class="duration-btn" @click="sessionDuration = Math.min(480, sessionDuration + 15)">+15</button>
+              </div>
+              <div class="duration-presets">
+                <span class="preset" @click="sessionDuration = 30">30 min</span>
+                <span class="preset" @click="sessionDuration = 60">1 soat</span>
+                <span class="preset" @click="sessionDuration = 120">2 soat</span>
+                <span class="preset" @click="sessionDuration = 180">3 soat</span>
+                <span class="preset" @click="sessionDuration = 240">4 soat</span>
+              </div>
+            </div>
+
+            <div class="price-info" v-if="sessionTariff">
+              <span>💰 Umumiy narx:</span>
+              <strong>{{ formatMoney(calculatePrice()) }}</strong>
+            </div>
+            <div class="price-info" v-else>
+              <span>⚠️ Tarif mavjud emas</span>
+              <strong>0 so'm</strong>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn cancel" @click="closeSessionModal">Bekor qilish</button>
+            <button type="button" class="btn primary" @click="startSession" :disabled="sessionLoading || !sessionTariff">
+              {{ sessionLoading ? 'Boshlanmoqda...' : 'Sessiyani boshlash' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>
 
@@ -196,6 +270,9 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import computersApi from '@/api/computers'
 import bookingsApi from '@/api/bookings'
+import sessionsApi from '@/api/sessions'
+import tariffsApi from '@/api/tariffs'
+import usersApi from '@/api/users'
 
 // ==================== STATE ====================
 const computers = ref([])
@@ -203,6 +280,15 @@ const selectedComputer = ref(null)
 const lastResponse = ref(null)
 const lastAction = ref('')
 const loading = ref(false)
+
+// Modal state
+const showSessionModal = ref(false)
+const selectedComputerForSession = ref(null)
+const sessionDuration = ref(60)
+const sessionTariff = ref(null)
+const sessionUserId = ref(null)
+const sessionLoading = ref(false)
+const availableTariffs = ref([])
 
 // ==================== FORMLAR ====================
 const idForm = reactive({ computerId: 1 })
@@ -228,6 +314,13 @@ const updateForm = reactive({
 
 // ==================== YORDAMCHI FUNKSIYALAR ====================
 
+const moneyFormatter = new Intl.NumberFormat('uz-UZ')
+
+const formatMoney = (value) => {
+  if (!value && value !== 0) return '-'
+  return `${moneyFormatter.format(Math.round(value))} so'm`
+}
+
 const pretty = (data) => {
   if (data === null || data === undefined) return 'Ma\'lumot yo\'q'
   try {
@@ -237,32 +330,17 @@ const pretty = (data) => {
   }
 }
 
-// FIX: Statusni to'g'ri normalize qilish
 const normalizeStatus = (value) => {
   if (!value) return 'unknown'
-  
   const status = String(value).toString().trim().toLowerCase()
-  
-  // API dan kelishi mumkin bo'lgan barcha variantlar
-  if (status === 'available' || status === 'free' || status === 'bo\'sh' || status === 'bosh') {
-    return 'available'
-  }
-  if (status === 'busy' || status === 'occupied' || status === 'band' || status === 'ishlatilmoqda') {
-    return 'busy'
-  }
-  if (status === 'maintenance' || status === 'repair' || status === 'texnik' || status === 'xizmat') {
-    return 'maintenance'
-  }
-  if (status === 'offline' || status === 'off' || status === 'o\'chiq' || status === 'disabled') {
-    return 'offline'
-  }
-  
-  console.warn('Noma\'lum status:', value)
+  if (status === 'available' || status === 'free' || status === 'bo\'sh') return 'available'
+  if (status === 'busy' || status === 'occupied' || status === 'band') return 'busy'
+  if (status === 'maintenance' || status === 'repair' || status === 'texnik') return 'maintenance'
+  if (status === 'offline' || status === 'off' || status === 'o\'chiq') return 'offline'
   return 'unknown'
 }
 
 const statusText = (status) => {
-  const normalized = normalizeStatus(status)
   const map = {
     available: 'Bo\'sh',
     busy: 'Band',
@@ -270,7 +348,7 @@ const statusText = (status) => {
     offline: 'Offline',
     unknown: 'Noma\'lum'
   }
-  return map[normalized] || status || 'Noma\'lum'
+  return map[normalizeStatus(status)] || status || 'Noma\'lum'
 }
 
 const toNumber = (value, fallback = null) => {
@@ -278,76 +356,28 @@ const toNumber = (value, fallback = null) => {
   return Number.isFinite(numeric) ? numeric : fallback
 }
 
-const toOptionalNumber = (value) => {
-  const numeric = Number(value)
-  return Number.isFinite(numeric) ? numeric : null
-}
-
 const extractBody = (payload) => payload?.data ?? payload ?? null
 
-// FIX: Kompyuterni to'g'ri normalize qilish
 const normalizeComputer = (raw = {}, zoneFallback = null) => {
-  // API dan kelgan ma'lumotni to'g'ri parse qilish
   const computer = raw?.data ?? raw ?? {}
-  
   const zoneSource = computer.zone ?? zoneFallback ?? {}
   const specs = computer.specs ?? {}
 
-  // ID ni olish
   const id = computer.id ?? computer.computerId ?? computer.computer_id ?? null
-  
-  // Number ni olish
   const number = toNumber(computer.number ?? computer.pcNumber ?? computer.pc_number, null)
-  
-  // Zone ID ni olish
   const zoneId = computer.zoneId ?? computer.zone_id ?? zoneSource.id ?? zoneSource.zoneId ?? null
+  const zoneName = computer.zoneName ?? computer.zone_name ?? zoneSource.name ?? zoneSource.zoneName ?? (zoneId !== null ? `Zone ${zoneId}` : '')
   
-  // Zone nomini olish
-  const zoneName = computer.zoneName ??
-    computer.zone_name ??
-    zoneSource.name ??
-    zoneSource.zoneName ??
-    (zoneId !== null ? `Zone ${zoneId}` : '')
-  
-  // FIX: Statusni to'g'ri olish - bu eng muhim qism!
   let status = 'unknown'
-  
-  // API dan statusni olishning turli usullari
   if (computer.status !== undefined && computer.status !== null) {
     status = computer.status
   } else if (computer.computerStatus !== undefined && computer.computerStatus !== null) {
     status = computer.computerStatus
-  } else if (computer.state !== undefined && computer.state !== null) {
-    status = computer.state
   }
   
-  // Agar status hali ham topilmagan bo'lsa, computer obyektidagi barcha kalitlarni tekshir
-  if (status === 'unknown') {
-    const possibleStatusKeys = ['status', 'computerStatus', 'state', 'currentStatus', 'condition']
-    for (const key of possibleStatusKeys) {
-      if (computer[key] && typeof computer[key] === 'string') {
-        status = computer[key]
-        break
-      }
-    }
-  }
-  
-  // Agar status string bo'lmasa
-  if (typeof status !== 'string') {
-    status = String(status)
-  }
-  
-  // Statusni normalize qilish
   const normalizedStatus = normalizeStatus(status)
-  
-  // Debug uchun (agar status 'available' bo'lsa va aslida 'busy' bo'lishi kerak bo'lsa)
-  if (normalizedStatus === 'available' && computer.activeSession) {
-    console.warn(`Kompyuter ID ${id} da activeSession bor, lekin status available. Force -> busy`)
-    // Agar active session mavjud bo'lsa, status busy bo'lishi kerak
-    return normalizeComputer({ ...computer, status: 'busy' }, zoneFallback)
-  }
 
-  const normalized = {
+  return {
     key: id !== null ? `id-${id}` : `num-${number ?? Math.random().toString(36).slice(2)}`,
     id,
     number,
@@ -361,69 +391,36 @@ const normalizeComputer = (raw = {}, zoneFallback = null) => {
       ram: specs.ram ?? computer.ram ?? '',
       gpu: specs.gpu ?? computer.gpu ?? ''
     },
-    activeSession: computer.activeSession ?? computer.currentSession ?? computer.session ?? null,
-    raw: computer
+    activeSession: computer.activeSession ?? computer.currentSession ?? computer.session ?? null
   }
-
-  if (!normalized.name && normalized.number !== null) {
-    normalized.name = `PC-${String(normalized.number).padStart(2, '0')}`
-  }
-
-  return normalized
 }
-
-const collectZoneComputers = (zones) =>
-  zones.flatMap((zone) => {
-    const list = zone?.computers
-    if (!Array.isArray(list)) return []
-    return list.map((computer) => normalizeComputer(computer, zone))
-  })
 
 const extractComputers = (payload) => {
   const body = extractBody(payload)
-  
-  console.log('Extracting computers from payload:', body)
-  
-  if (Array.isArray(body)) {
-    console.log('Body is array, length:', body.length)
-    return body.map((item) => normalizeComputer(item))
-  }
-  
-  if (!body || typeof body !== 'object') {
-    console.warn('Body is not an object:', body)
-    return []
-  }
+  if (Array.isArray(body)) return body.map((item) => normalizeComputer(item))
+  if (!body || typeof body !== 'object') return []
 
   const candidates = [body.items, body.results, body.list, body.rows, body.computers, body.data, body.map]
   for (const candidate of candidates) {
-    if (Array.isArray(candidate)) {
-      console.log('Found candidate array, length:', candidate.length)
-      return candidate.map((item) => normalizeComputer(item))
-    }
+    if (Array.isArray(candidate)) return candidate.map((item) => normalizeComputer(item))
   }
 
   if (Array.isArray(body.zones)) {
-    console.log('Found zones array')
-    return collectZoneComputers(body.zones)
+    return body.zones.flatMap((zone) => {
+      const list = zone?.computers
+      if (!Array.isArray(list)) return []
+      return list.map((computer) => normalizeComputer(computer, zone))
+    })
   }
 
   const one = normalizeComputer(body)
-  if (one.id !== null || one.number !== null || one.name) {
-    console.log('Single computer found:', one)
-    return [one]
-  }
-
-  console.warn('No computers extracted from payload')
-  return []
+  return one.id !== null || one.number !== null ? [one] : []
 }
 
 const dedupeComputers = (list) => {
   const map = new Map()
   list.forEach((computer) => {
     const key = computer.id !== null ? `id-${computer.id}` : `num-${computer.number}`
-    if (map.has(key)) {
-      console.warn(`Duplicate computer found: ${key}`)
-    }
     map.set(key, { ...computer, key })
   })
   return Array.from(map.values())
@@ -441,47 +438,110 @@ const stats = computed(() => {
       .map((item) => item.zoneName || item.zoneId)
       .filter((value) => value !== null && value !== undefined && value !== '')
   ).size
-  
-  console.log('Stats:', { total, available, busy, maintenance, offline })
-  
   return { total, available, busy, maintenance, offline, zones }
 })
 
-const lastResult = computed(() => {
-  const body = extractBody(lastResponse.value)
-  if (body === null || body === undefined) return null
+// ==================== MODAL FUNKSIYALAR ====================
+const loadTariffs = async () => {
+  try {
+    const response = await tariffsApi.getActiveTariffs()
+    availableTariffs.value = response?.data || response || []
+  } catch (error) {
+    console.error('Tariflar yuklanmadi:', error)
+    availableTariffs.value = []
+  }
+}
 
-  const list = extractComputers(lastResponse.value)
-  if (list.length > 1) {
-    return {
-      statusText: 'Muvaffaqiyatli',
-      id: null,
-      name: null,
-      status: null,
-      count: list.length,
-      note: `${list.length} ta kompyuter ma\`lumoti qaytdi.`
+const getTariffForZone = (computer) => {
+  if (!availableTariffs.value.length) return null
+  const zoneTariff = availableTariffs.value.find(t => t.zoneId === computer.zoneId)
+  return zoneTariff || availableTariffs.value[0]
+}
+
+const calculatePrice = () => {
+  if (!sessionTariff.value) return 0
+  const pricePerHour = sessionTariff.value.pricePerHour || (sessionTariff.value.pricePerMinute || 100) * 60
+  const pricePerMinute = pricePerHour / 60
+  return Math.round(sessionDuration.value * pricePerMinute)
+}
+
+const openSessionModal = async (computer) => {
+  selectedComputerForSession.value = computer
+  await loadTariffs()
+  sessionTariff.value = getTariffForZone(computer)
+  sessionDuration.value = 60
+  sessionUserId.value = null
+  showSessionModal.value = true
+}
+
+const closeSessionModal = () => {
+  showSessionModal.value = false
+  selectedComputerForSession.value = null
+  sessionDuration.value = 60
+  sessionTariff.value = null
+  sessionUserId.value = null
+}
+
+const startSession = async () => {
+  if (!sessionTariff.value) {
+    ElMessage.warning('Tarif mavjud emas')
+    return
+  }
+  if (!selectedComputerForSession.value) {
+    ElMessage.warning('Kompyuter tanlanmagan')
+    return
+  }
+
+  sessionLoading.value = true
+  try {
+    let userId = sessionUserId.value
+    
+    // Agar user ID kiritilmagan bo'lsa, avtomatik foydalanuvchi yaratish
+    if (!userId) {
+      const guestUser = {
+        username: `guest_${Date.now()}`,
+        fullName: 'Mehmon foydalanuvchi',
+        phone: '+998901234567',
+        password: 'guest123'
+      }
+      
+      try {
+        const newUser = await usersApi.createUser(guestUser)
+        userId = newUser.id || newUser.userId
+        ElMessage.info(`Yangi foydalanuvchi yaratildi (ID: ${userId})`)
+      } catch (error) {
+        // Agar user yaratishda xatolik bo'lsa, default user ID ishlatamiz
+        userId = 1
+        ElMessage.warning('Avtomatik foydalanuvchi yaratilmadi, default user ishlatiladi')
+      }
+    } else {
+      // Kiritilgan ID bo'yicha user mavjudligini tekshirish
+      try {
+        await usersApi.getUserById(userId)
+      } catch (error) {
+        ElMessage.error(`User ID ${userId} topilmadi!`)
+        sessionLoading.value = false
+        return
+      }
     }
-  }
 
-  if (typeof body !== 'object') {
-    return { statusText: String(body), id: null, name: null, status: null, count: null, note: null }
-  }
+    const payload = {
+      userId: userId,
+      computerId: selectedComputerForSession.value.id,
+      tariffId: sessionTariff.value.id,
+      notes: `${sessionDuration.value} daqiqa uchun sessiya (User ID: ${userId})`
+    }
 
-  const id = body.id ?? body.computerId ?? body.computer_id ?? null
-  const name = body.name ?? body.computerName ?? body.computer_name ?? null
-  const status = body.status ?? body.computerStatus ?? null
-  const count = toOptionalNumber(body.count ?? body.total ?? body.length)
-  const note = body.message ?? body.description ?? null
-
-  return {
-    statusText: body.statusText ?? (body.message ? 'Muvaffaqiyatli' : 'Bajarildi'),
-    id,
-    name,
-    status,
-    count,
-    note
+    await sessionsApi.startSession(payload)
+    ElMessage.success(`Sessiya boshlandi! (${sessionDuration.value} daqiqa, ${formatMoney(calculatePrice())})`)
+    closeSessionModal()
+    await runGetAll()
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || error?.message || 'Sessiya boshlanmadi')
+  } finally {
+    sessionLoading.value = false
   }
-})
+}
 
 // ==================== SELECTION ====================
 const syncFormsByComputer = (computer) => {
@@ -504,35 +564,39 @@ const syncFormsByComputer = (computer) => {
 const handleCardClick = async (computer) => {
   syncFormsByComputer(computer)
 
-  // Agar "available" bo'lsa bron so'rash
-  if (computer.status === 'available') {
-    try {
-      await ElMessageBox.confirm(
-        `Kompyuter: ${computer.name || `PC-${computer.number}`}\n\n2 soatlik bron qilinsinmi?`,
-        'Bron yaratish',
-        { confirmButtonText: 'Ha, bron qil', cancelButtonText: 'Bekor qil', type: 'info' }
-      )
+  if (computer.status !== 'available') {
+    if (computer.status === 'busy') ElMessage.info('Bu kompyuter hozirda band')
+    else if (computer.status === 'maintenance') ElMessage.warning('Bu kompyuter texnik xizmatda')
+    else if (computer.status === 'offline') ElMessage.error('Bu kompyuter offline holatda')
+    return
+  }
 
-      const now = new Date()
-      const until = new Date(now.getTime() + 2 * 60 * 60 * 1000)
-
-      await bookingsApi.createBooking({
-        computerId: computer.id,
-        bookedFrom: now.toISOString(),
-        bookedUntil: until.toISOString()
-      })
-
-      ElMessage.success('Bron muvaffaqiyatli yaratildi!')
-      await runGetAll()
-    } catch (err) {
-      if (err !== 'cancel') console.error(err)
+  try {
+    await ElMessageBox.confirm(
+      `Kompyuter: ${computer.name || `PC-${computer.number}`}\n\nQanday amal bajarmoqchisiz?`,
+      'Amalni tanlang',
+      {
+        confirmButtonText: '📅 Bron qilish',
+        cancelButtonText: '▶️ Sessiya yoqish',
+        type: 'info',
+        distinguishCancelAndClose: true
+      }
+    )
+    // Bron qilish
+    const now = new Date()
+    const until = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+    await bookingsApi.createBooking({
+      computerId: computer.id,
+      bookedFrom: now.toISOString(),
+      bookedUntil: until.toISOString()
+    })
+    ElMessage.success('Bron muvaffaqiyatli yaratildi!')
+    await runGetAll()
+  } catch (err) {
+    if (err === 'cancel') {
+      // Sessiya yoqish
+      openSessionModal(computer)
     }
-  } else if (computer.status === 'busy') {
-    ElMessage.info('Bu kompyuter hozirda band')
-  } else if (computer.status === 'maintenance') {
-    ElMessage.warning('Bu kompyuter texnik xizmatda')
-  } else if (computer.status === 'offline') {
-    ElMessage.error('Bu kompyuter offline holatda')
   }
 }
 
@@ -542,31 +606,13 @@ const clearSelection = () => {
 
 const applyList = (list) => {
   computers.value = dedupeComputers(list)
-  
-  console.log('Applied computers list:', computers.value.map(c => ({ id: c.id, name: c.name, status: c.status })))
-  
   if (!computers.value.length) {
     clearSelection()
     return
   }
   const current = selectedComputer.value
-  const next =
-    computers.value.find((item) => item.id !== null && item.id === current?.id) ||
-    computers.value.find((item) => item.number !== null && item.number === current?.number) ||
-    computers.value[0]
+  const next = computers.value.find((item) => item.id !== null && item.id === current?.id) || computers.value[0]
   syncFormsByComputer(next)
-}
-
-const upsertComputer = (computer) => {
-  const list = [...computers.value]
-  const index = list.findIndex(
-    (item) =>
-      (computer.id !== null && item.id === computer.id) ||
-      (computer.id === null && computer.number !== null && item.number === computer.number)
-  )
-  if (index >= 0) list[index] = computer
-  else list.unshift(computer)
-  applyList(list)
 }
 
 // ==================== API SO'ROVLARI ====================
@@ -590,12 +636,7 @@ const runGetAll = async () => {
     'Kompyuterlar yuklandi',
     'Barcha kompyuterlar'
   )
-  if (response) {
-    console.log('API Response for getAllComputers:', response)
-    const extracted = extractComputers(response)
-    console.log('Extracted computers:', extracted)
-    applyList(extracted)
-  }
+  if (response) applyList(extractComputers(response))
   loading.value = false
 }
 
@@ -637,7 +678,11 @@ const runGetById = async () => {
     ElMessage.warning('Kompyuter topilmadi')
     return
   }
-  upsertComputer(found)
+  const list = [...computers.value]
+  const index = list.findIndex((item) => item.id === found.id)
+  if (index >= 0) list[index] = found
+  else list.unshift(found)
+  applyList(list)
 }
 
 const buildSpecs = (source) => {
@@ -720,17 +765,15 @@ onMounted(() => runGetAll())
 </script>
 
 <style scoped>
-.input-xarekteristik {
+.input-xarakteristik {
   width: 100px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
 }
-computers-page {
+.computers-page {
   display: grid;
   gap: 16px;
   padding: 20px;
+  background: linear-gradient(135deg, #0a0f1a 0%, #0c1220 100%);
+  min-height: 100vh;
 }
 
 .hero-panel,
@@ -739,19 +782,6 @@ computers-page {
   border: 1px solid rgba(125, 190, 255, 0.3);
   background: linear-gradient(145deg, rgba(8, 20, 44, 0.92), rgba(10, 27, 59, 0.75));
   padding: 20px;
-}
-
-.computers-page {
-  display: grid;
-  gap: 14px;
-}
-
-.hero-panel,
-.data-panel {
-  border-radius: 20px;
-  border: 1px solid rgba(125, 190, 255, 0.3);
-  background: linear-gradient(145deg, rgba(8, 20, 44, 0.92), rgba(10, 27, 59, 0.75));
-  padding: 18px;
 }
 
 .hero-head {
@@ -769,8 +799,7 @@ computers-page {
   color: #9fc8ff;
 }
 
-h2,
-h3 {
+h2, h3 {
   margin: 4px 0 0;
   color: #f4f9ff;
 }
@@ -796,6 +825,7 @@ h3 {
   color: #e4f1ff;
   font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .btn.primary {
@@ -845,6 +875,9 @@ h3 {
   align-items: flex-end;
   gap: 10px;
   flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(125, 190, 255, 0.2);
 }
 
 .cards-grid {
@@ -864,10 +897,7 @@ h3 {
   text-align: left;
   color: #d9e9ff;
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .computer-card:hover {
@@ -927,7 +957,7 @@ h3 {
 .meta-grid {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .meta-grid div {
@@ -991,7 +1021,7 @@ h3 {
 .triple-grid {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, 1fr);
 }
 
 label {
@@ -1069,11 +1099,6 @@ select {
   font-size: 15px;
 }
 
-.detail-description {
-  margin: 12px 0 0;
-  color: #c0d6ee;
-}
-
 .spec-box {
   margin-top: 12px;
   border-radius: 12px;
@@ -1098,11 +1123,235 @@ select {
   background: rgba(13, 35, 72, 0.3);
 }
 
-@media (max-width: 920px) {
+.json-box {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  overflow-x: auto;
+  font-size: 12px;
+  color: #b8d0f0;
+  margin-top: 12px;
+}
 
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-container {
+  background: linear-gradient(145deg, rgba(8, 20, 44, 0.98), rgba(10, 27, 59, 0.95));
+  border-radius: 24px;
+  border: 1px solid rgba(74, 144, 226, 0.4);
+  width: 90%;
+  max-width: 450px;
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(74, 144, 226, 0.2);
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #f4f9ff;
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.computer-info {
+  background: rgba(74, 144, 226, 0.1);
+  padding: 12px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.computer-info strong {
+  display: block;
+  color: #fff;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.computer-info span {
+  color: #7db9ff;
+  font-size: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  color: #9ec0e4;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.input-hint {
+  color: #ffb86c;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.modal-input, .modal-select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(74, 144, 226, 0.3);
+  background: rgba(11, 33, 69, 0.6);
+  color: #fff;
+  font-size: 14px;
+}
+
+.modal-input:focus, .modal-select:focus {
+  outline: none;
+  border-color: rgba(74, 144, 226, 0.8);
+}
+
+.duration-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.duration-btn {
+  padding: 8px 12px;
+  background: rgba(74, 144, 226, 0.2);
+  border: 1px solid rgba(74, 144, 226, 0.4);
+  border-radius: 8px;
+  color: #7db9ff;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.duration-btn:hover {
+  background: rgba(74, 144, 226, 0.3);
+}
+
+.duration-input {
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(74, 144, 226, 0.3);
+  background: rgba(11, 33, 69, 0.6);
+  color: #fff;
+  font-size: 16px;
+}
+
+.duration-presets {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.preset {
+  padding: 4px 10px;
+  background: rgba(74, 144, 226, 0.1);
+  border-radius: 16px;
+  font-size: 11px;
+  color: #9ec0e4;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.preset:hover {
+  background: rgba(74, 144, 226, 0.3);
+  color: #fff;
+}
+
+.price-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: rgba(74, 144, 226, 0.1);
+  border-radius: 12px;
+  margin-top: 8px;
+}
+
+.price-info span {
+  color: #9ec0e4;
+  font-size: 14px;
+}
+
+.price-info strong {
+  color: #6bc46b;
+  font-size: 20px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid rgba(74, 144, 226, 0.2);
+}
+
+.modal-footer .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.modal-footer .btn.cancel {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 920px) {
   .triple-grid,
   .meta-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .modal-container {
+    width: 95%;
+    margin: 10px;
   }
 }
 </style>

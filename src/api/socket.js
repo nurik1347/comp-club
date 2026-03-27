@@ -2,9 +2,6 @@ import { io } from 'socket.io-client'
 
 let socket = null
 
-/**
- * Socket.io ni ishga tushirish (faqat bitta marta)
- */
 export const initSocket = () => {
   if (socket?.connected) return socket
 
@@ -25,15 +22,11 @@ export const initSocket = () => {
 
 export const getSocket = () => socket
 
-/**
- * Eventga obuna bo‘lish (avtomatik unsubscribe qaytaradi)
- */
+
 export const onSocketEvent = (eventName, callback) => {
   if (!socket) return () => {}
 
   socket.on(eventName, callback)
-
-  // Unsubscribe funksiyasi
   return () => socket.off(eventName, callback)
 }
 

@@ -1,7 +1,16 @@
-﻿import api from './axios'
+﻿// users.js fayliga qo'shing
+import api from './axios'
 
 export const getUsers = async (params = {}) => {
   const response = await api.get('/api/users', { params })
+  return response.data
+}
+
+// Yangi funksiya - getAllUsers
+export const getAllUsers = async () => {
+  const response = await api.get('/api/users', { 
+    params: { page: 1, limit: 1000 } // barcha foydalanuvchilarni olish uchun limitni katta qo'yamiz
+  })
   return response.data
 }
 
@@ -50,8 +59,17 @@ export const updateMyProfile = async (payload) => {
   return response.data
 }
 
+// Search users funksiyasi (agar kerak bo'lsa)
+export const searchUsers = async (query) => {
+  const response = await api.get('/api/users', { 
+    params: { search: query, limit: 20 }
+  })
+  return response.data
+}
+
 export default {
   getUsers,
+  getAllUsers, // yangi qo'shilgan
   getUserById,
   createUser,
   updateUser,
@@ -60,5 +78,6 @@ export default {
   getUserSessions,
   getUserTransactions,
   getMyProfile,
-  updateMyProfile
+  updateMyProfile,
+  searchUsers
 }

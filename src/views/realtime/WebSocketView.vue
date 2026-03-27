@@ -57,7 +57,6 @@ const pushLog = (event, payload) => {
     payload: payload || {}
   })
 
-  // Oxirgi 100 ta eventni saqlash
   if (logs.value.length > 100) logs.value.pop()
 }
 
