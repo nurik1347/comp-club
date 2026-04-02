@@ -222,4 +222,28 @@ p {
   overflow: auto;
   white-space: pre;
 }
+
+@media (max-width: 640px) {
+  .page-wrap {
+    padding: 12px;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .title-row,
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions .btn {
+    width: 100%;
+  }
+
+  .status-line {
+    font-size: 14px;
+  }
+}
 </style>

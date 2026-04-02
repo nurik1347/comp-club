@@ -441,9 +441,13 @@ const runWithToast = async (request, message, actionLabel = '') => {
   }
 }
 
-const runGetAll = async () => {
+const runGetAll = async (showToast = true) => {
   loading.value = true
-  const response = await runWithToast(() => zonesApi.getAllZones(), 'Zonalar yuklandi', 'Barcha zonalarni olish')
+  const response = await runWithToast(
+    () => zonesApi.getAllZones(),
+    showToast ? 'Zonalar yuklandi' : '',
+    'Barcha zonalarni olish'
+  )
 
   if (response) {
     zones.value = extractArray(response).map(normalizeZone)
@@ -538,7 +542,7 @@ const runDelete = async () => {
 }
 
 onMounted(async () => {
-  await runGetAll()
+  await runGetAll(false)
 })
 </script>
 

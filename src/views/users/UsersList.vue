@@ -572,4 +572,44 @@ th {
     overflow-x: auto;
   }
 }
+
+@media (max-width: 640px) {
+  .panel {
+    padding: 14px;
+  }
+
+  .title-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  input {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    width: 100%;
+  }
+
+  .pagination-actions {
+    width: 100%;
+  }
+
+  .pagination-actions .btn-secondary {
+    flex: 1;
+  }
+
+  th,
+  td {
+    padding: 8px 6px;
+    font-size: 12px;
+  }
+}
 </style>

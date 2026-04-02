@@ -302,4 +302,30 @@ input {
   max-height: 300px;
   overflow: auto;
 }
+
+@media (max-width: 640px) {
+  .panel {
+    padding: 14px;
+  }
+
+  .title-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar,
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar .btn,
+  .actions .btn {
+    width: 100%;
+  }
+
+  .big-number {
+    font-size: 22px;
+  }
+}
 </style>

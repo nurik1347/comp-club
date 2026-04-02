@@ -637,9 +637,13 @@ const runWithToast = async (request, message, actionLabel = '') => {
   }
 }
 
-const runGetAll = async () => {
+const runGetAll = async (showToast = true) => {
   loading.value = true
-  const response = await runWithToast(() => tariffsApi.getAllTariffs(), 'Tariflar yuklandi', 'Barcha tariflar')
+  const response = await runWithToast(
+    () => tariffsApi.getAllTariffs(),
+    showToast ? 'Tariflar yuklandi' : '',
+    'Barcha tariflar'
+  )
   if (response) {
     applyList(extractTariffs(response))
   }
@@ -753,7 +757,7 @@ const runToggle = async () => {
 }
 
 onMounted(async () => {
-  await runGetAll()
+  await runGetAll(false)
 })
 </script>
 

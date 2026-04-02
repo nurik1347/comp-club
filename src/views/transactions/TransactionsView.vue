@@ -492,11 +492,11 @@ const buildUpdatePayload = () => {
   return { payload }
 }
 
-const runGetAll = async () => {
+const runGetAll = async (showToast = true) => {
   loading.value = true
   const response = await runWithToast(
     () => transactionsApi.getAllTransactions(buildParams()),
-    'Tranzaksiyalar yuklandi',
+    showToast ? 'Tranzaksiyalar yuklandi' : '',
     'Barcha tranzaksiyalar'
   )
   if (response) {
@@ -685,7 +685,7 @@ const pretty = (value) => {
 }
 
 onMounted(async () => {
-  await runGetAll()
+  await runGetAll(false)
 })
 </script>
 

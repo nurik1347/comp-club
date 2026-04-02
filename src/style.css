@@ -13,6 +13,7 @@ html,
 body,
 #app {
   min-height: 100%;
+  width: 100%;
 }
 
 body {
@@ -22,6 +23,7 @@ body {
   background: radial-gradient(1000px 650px at 10% 0%, rgba(31, 107, 245, 0.22), transparent 70%),
     radial-gradient(900px 550px at 100% 20%, rgba(29, 145, 255, 0.2), transparent 70%),
     linear-gradient(150deg, #030712, #0a1630 45%, #081225);
+  overflow-x: hidden;
 }
 
 h1,
@@ -43,4 +45,91 @@ input,
 select,
 textarea {
   font-family: inherit;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (max-width: 980px) {
+  body .admin-content {
+    padding: 14px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body .admin-content {
+    padding: 10px !important;
+  }
+
+  body .hero-head,
+  body .title-row,
+  body .panel-head,
+  body .toolbar,
+  body .actions,
+  body .hero-actions,
+  body .filter-actions,
+  body .action-buttons,
+  body .pagination-row,
+  body .inline-row,
+  body .color-row,
+  body .card-footer,
+  body .meta-wrap,
+  body .modal-footer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  body .hero-actions > *,
+  body .actions > *,
+  body .toolbar > *,
+  body .filter-actions > *,
+  body .action-buttons > *,
+  body .pagination-actions > *,
+  body .inline-row > *,
+  body .card-footer > *,
+  body .modal-footer > * {
+    width: 100% !important;
+  }
+
+  body .filters,
+  body .filters-grid,
+  body .forms-grid,
+  body .grid-three,
+  body .double-grid,
+  body .triple-grid,
+  body .stat-grid,
+  body .stats-grid,
+  body .detail-grid,
+  body .meta-grid,
+  body .cards-grid,
+  body .bottom-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body .page-wrap,
+  body .dashboard-page,
+  body .zones-page,
+  body .computers-page,
+  body .tariffs-page,
+  body .sessions-page {
+    padding: 12px !important;
+  }
+
+  body table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body th,
+  body td {
+    white-space: nowrap;
+    font-size: 12px !important;
+  }
 }

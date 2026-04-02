@@ -456,11 +456,11 @@ const buildFilterParams = () => ({
   endDate: filters.endDate || undefined
 })
 
-const runGetAll = async () => {
+const runGetAll = async (showToast = true) => {
   loading.value = true
   const response = await runWithToast(
     () => sessionsApi.getAllSessions(buildFilterParams()),
-    'Sessiyalar yuklandi'
+    showToast ? 'Sessiyalar yuklandi' : ''
   )
   if (response) sessions.value = extractSessions(response)
   loading.value = false
@@ -483,7 +483,7 @@ const resetFilters = async () => {
   await runGetAll()
 }
 
-onMounted(() => runGetAll())
+onMounted(() => runGetAll(false))
 </script>
 
 <style scoped>

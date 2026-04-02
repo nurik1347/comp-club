@@ -123,4 +123,14 @@ watch(
     padding: 16px;
   }
 }
+
+@media (max-width: 680px) {
+  .admin-content {
+    padding: 12px;
+  }
+
+  .shell-glow {
+    display: none;
+  }
+}
 </style>

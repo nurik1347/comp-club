@@ -131,15 +131,7 @@
       </div>
     </article>
 
-    <article class="panel json-panel">
-      <div class="panel-header">
-        <h3>📡 API javobi</h3>
-        <button class="btn small" @click="lastResponse = null" v-if="lastResponse">
-          Tozalash
-        </button>
-      </div>
-      <pre class="json-box">{{ pretty(lastResponse) }}</pre>
-    </article>
+
   </section>
 </template>
 

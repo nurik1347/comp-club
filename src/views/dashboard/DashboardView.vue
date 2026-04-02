@@ -235,7 +235,7 @@ const extractData = (payload) => {
   return payload.data ?? payload
 }
 
-const loadDashboard = async () => {
+const loadDashboard = async (showToast = true) => {
   loading.value = true
 
   try {
@@ -313,7 +313,9 @@ const loadDashboard = async () => {
       // Qo'shimcha statistikalar
     }
 
-    ElMessage.success('Dashboard yangilandi')
+    if (showToast) {
+      ElMessage.success('Dashboard yangilandi')
+    }
 
   } catch (error) {
     console.error('Dashboard error:', error)
@@ -324,7 +326,7 @@ const loadDashboard = async () => {
 }
 
 onMounted(() => {
-  loadDashboard()
+  loadDashboard(false)
 })
 </script>
 

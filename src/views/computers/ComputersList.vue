@@ -140,7 +140,6 @@
         </div>
       </article>
 
-      <!-- Get By ID + Delete -->
       <article class="form-card">
         <h3>Get By ID</h3>
         <div class="inline-row">
@@ -162,7 +161,6 @@
       </article>
     </div>
 
-    <!-- Tanlangan kompyuter detallari -->
     <article class="data-panel" v-if="selectedComputer">
       <div class="panel-head"><h3>Tanlangan kompyuter</h3></div>
       <div class="detail-grid">
@@ -184,13 +182,7 @@
       </div>
     </article>
 
-    <!-- API natijasi -->
-    <article class="data-panel">
-      <div class="panel-head"><h3>API natijasi</h3></div>
-      <pre class="json-box">{{ pretty(lastResponse) }}</pre>
-    </article>
 
-    <!-- Sessiya yoqish modal -->
     <Teleport to="body">
       <div v-if="showSessionModal" class="modal-overlay" @click.self="closeSessionModal">
         <div class="modal-container">
@@ -629,11 +621,11 @@ const runWithToast = async (request, message, actionLabel = '') => {
   }
 }
 
-const runGetAll = async () => {
+const runGetAll = async (showToast = true) => {
   loading.value = true
   const response = await runWithToast(
     () => computersApi.getAllComputers(),
-    'Kompyuterlar yuklandi',
+    showToast ? 'Kompyuterlar yuklandi' : '',
     'Barcha kompyuterlar'
   )
   if (response) applyList(extractComputers(response))
@@ -761,7 +753,7 @@ const runStatusUpdate = async () => {
 }
 
 // ==================== LIFECYCLE ====================
-onMounted(() => runGetAll())
+onMounted(() => runGetAll(false))
 </script>
 
 <style scoped>

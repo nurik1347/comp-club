@@ -133,4 +133,35 @@ h1 {
     font-size: 20px;
   }
 }
+
+@media (max-width: 560px) {
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .menu-btn {
+    order: 1;
+  }
+
+  .title-wrap {
+    order: 2;
+    width: 100%;
+  }
+
+  .meta-wrap {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    flex-direction: row;
+  }
+
+  .chip {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  h1 {
+    font-size: 18px;
+  }
+}
 </style>
